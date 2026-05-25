@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>狼人殺 單機版</title>
+
+<style>
+
+body{
+    margin:0;
+    background:#0f172a;
+    color:white;
+    font-family:"Microsoft JhengHei";
+}
+
+header{
+    background:#111827;
+    padding:15px;
+    text-align:center;
+    font-size:28px;
+    font-weight:bold;
+}
+
+.container{
+    display:flex;
+    height:calc(100vh - 70px);
+}
+
+.left{
+    width:25%;
+    background:#1e293b;
+    padding:20px;
+    overflow:auto;
+}
+
+.center{
+    flex:1;
+    padding:20px;
+    overflow:auto;
+}
+
+.right{
+    width:25%;
+    background:#1e293b;
+    padding:20px;
+}
+
+.player{
+    background:#334155;
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:10px;
+}
+
+.dead{
+    opacity:0.4;
+}
+
+button{
+    padding:10px 20px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    margin:5px;
+}
+
+input{
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    width:100%;
+    margin-bottom:10px;
+}
+
+#log{
+    background:#111827;
+    padding:15px;
+    border-radius:10px;
+    height:70vh;
+    overflow:auto;
+}
+
+.card{
+    background:#1e293b;
+    padding:15px;
+    border-radius:10px;
+    margin-bottom:15px;
+}
+
+h2{
+    margin-top:0;
+}
+
+.vote-btn{
+    width:100%;
+    margin-top:5px;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+狼人殺 單機版
+</header>
+
+<div class="container">
+
+<div class="left">
+
+<h2>玩家列表</h2>
+
+<div id="players"></div>
+
+</div>
+
+<div class="center">
+
+<div class="card">
+
+<h2 id="phase">等待開始</h2>
+
+<button onclick="startGame()">
+開始遊戲
+</button>
+
+<button onclick="nextPhase()">
+下一階段
+</button>
+
+</div>
+
+<div id="log"></div>
+
+</div>
+
+<div class="right">
+
+<div class="card">
+
+<h2>你的身份</h2>
+
+<div id="myRole">
+未知
+</div>
+
+</div>
+
+<div class="card">
+
+<h2>投票</h2>
+
+<div id="voteArea"></div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const roles = [
+    "狼人","狼人","狼人",
+    "平民","平民","平民",
+    "預言家","女巫","調停者","叛徒"
+];
+
+let players = [];
+
+let phase = "等待開始";
+
+let currentDay = 1;
+
+function createPlayers(){
+
+    players = [];
+
+    let shuffled = [...roles]
+        .sort(()=>Math.random()-0.5);
+
+    for(let i=0;i<10;i++){
+
+        players.push({
+
+            id:i+1,
+
+            name:`${i+1}號玩家`,
+
+            role:shuffled[i],
+
+            alive:true
+        });
+    }
+}
+
+function renderPlayers(){
+
+    const div =
+        document.getElementById("players");
+
+    div.innerHTML = "";
+
+    players.forEach(p=>{
+
+        const d =
+            document.createElement("div");
+
+        d.className = "player";
+
+        if(!p.alive){
+
+            d.classList.add("dead");
+        }
+
+        d.innerHTML = `
+            ${p.name}
+            ${p.alive ? "🟢" : "💀"}
+        `;
+
+        div.appendChild(d);
+    });
+}
+
+function log(msg){
+
+    const div =
+        document.createElement("div");
+
+    div.innerHTML = msg;
+
+    document.getElementById("log")
+        .appendChild(div);
+
+    document.getElementById("log")
+        .scrollTop =
+        document.getElementById("log")
+        .scrollHeight;
+}
+
+function startGame(){
+
+    createPlayers();
+
+    renderPlayers();
+
+    phase = "夜晚";
+
+    document.getElementById("phase")
+        .innerText =
+        `🌙 第 ${currentDay} 晚`;
+
+    document.getElementById("myRole")
+        .innerHTML = `
+        <h1>${players[0].role}</h1>
+        `;
+
+    log("🎮 遊戲開始");
+
+    log("🌙 進入夜晚");
+
+    updateVoteArea();
+}
+
+function nextPhase(){
+
+    if(phase === "夜晚"){
+
+        phase = "白天";
+
+        document.getElementById("phase")
+            .innerText =
+            `☀️ 第 ${currentDay} 天`;
+
+        log("☀️ 天亮了");
+
+        randomNightDeath();
+    }
+
+    else{
+
+        currentDay++;
+
+        phase = "夜晚";
+
+        document.getElementById("phase")
+            .innerText =
+            `🌙 第 ${currentDay} 晚`;
+
+        log("🌙 進入夜晚");
+    }
+
+    checkVictory();
+
+    renderPlayers();
+
+    updateVoteArea();
+}
+
+function randomNightDeath(){
+
+    const alive =
+        players.filter(p=>p.alive);
+
+    if(alive.length <= 1) return;
+
+    let target =
+        alive[
+            Math.floor(Math.random()*alive.length)
+        ];
+
+    target.alive = false;
+
+    log(`💀 ${target.name} 死亡`);
+}
+
+function updateVoteArea(){
+
+    const div =
+        document.getElementById("voteArea");
+
+    div.innerHTML = "";
+
+    players.forEach(p=>{
+
+        if(!p.alive) return;
+
+        const btn =
+            document.createElement("button");
+
+        btn.className = "vote-btn";
+
+        btn.innerText =
+            `投票 ${p.name}`;
+
+        btn.onclick = ()=>vote(p.id);
+
+        div.appendChild(btn);
+    });
+}
+
+function vote(id){
+
+    const target =
+        players.find(p=>p.id===id);
+
+    if(!target || !target.alive)
+        return;
+
+    target.alive = false;
+
+    log(`🗳️ ${target.name} 被公投出局`);
+
+    renderPlayers();
+
+    updateVoteArea();
+
+    checkVictory();
+}
+
+function checkVictory(){
+
+    const alive =
+        players.filter(p=>p.alive);
+
+    const wolves =
+        alive.filter(p=>p.role==="狼人");
+
+    const good =
+        alive.filter(p=>p.role!=="狼人");
+
+    if(wolves.length===0){
+
+        log("🎉 好人勝利");
+
+        alert("好人勝利");
+    }
+
+    if(wolves.length >= good.length){
+
+        log("🐺 狼人勝利");
+
+        alert("狼人勝利");
+    }
+}
+
+</script>
+
+</body>
+</html>
