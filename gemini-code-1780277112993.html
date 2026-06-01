@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>狼人殺 - 上帝視角控制台</title>
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --panel-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --gold: #d4af37;
+            --wolf-red: #ff4d4d;
+            --seer-blue: #4da6ff;
+            --witch-green: #4dff4d;
+            --mediator-gold: #ffcc00;
+            --traitor-purple: #b366ff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); padding: 20px; display: flex; justify-content: center; }
+        
+        .container { display: grid; grid-template-columns: 240px 1fr 300px; gap: 20px; width: 100%; max-width: 1400px; height: 90vh; }
+        
+        .panel { background-color: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; }
+        .panel-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); color: var(--gold); }
+
+        .sidebar { gap: 15px; }
+        .logo-area { text-align: center; margin-bottom: 10px; }
+        .logo-area h1 { font-size: 24px; color: var(--gold); letter-spacing: 2px; }
+        .logo-area p { font-size: 12px; color: var(--text-muted); }
+        .config-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 14px; }
+        
+        .btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; text-align: center; color: white; transition: 0.2s; }
+        .btn-gold { background: linear-gradient(135deg, #b8860b, #e6b800); color: #000; }
+        .btn-blue { background: #1f6feb; }
+        .btn-brown { background: #8b5a2b; }
+        .btn-red { background: #8b0000; }
+        .btn:hover { opacity: 0.9; transform: scale(1.02); }
+
+        .status-bar { grid-column: 2 / 3; display: flex; justify-content: space-around; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; height: 65px; }
+        .status-item { text-align: center; }
+        .status-item span { display: block; font-size: 12px; color: var(--text-muted); }
+        .status-item strong { font-size: 16px; color: var(--text-main); }
+
+        .main-content { grid-column: 2 / 3; gap: 15px; background: transparent; border: none; padding: 0; }
+        .card-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; flex-grow: 1; overflow-y: auto; }
+        
+        .card { background: #1c2128; border: 2px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center; position: relative; height: 210px; cursor: pointer; transition: 0.3s; }
+        .card:hover { border-color: var(--gold); box-shadow: 0 0 10px rgba(212, 175, 55, 0.3); }
+        .card-num { font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
+        .card-avatar { width: 70px; height: 70px; border-radius: 50%; background: #2d333b; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 10px; border: 1px solid var(--border-color); }
+        .card-role { font-size: 18px; font-weight: bold; margin-bottom: 5px; letter-spacing: 1px; }
+        .card-status { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+        .status-alive { color: #56d364; }
+        .status-dead { color: #f85149; }
+
+        .role-wolf { border-color: var(--wolf-red); color: var(--wolf-red); }
+        .role-seer { border-color: var(--seer-blue); color: var(--seer-blue); }
+        .role-witch { border-color: var(--witch-green); color: var(--witch-green); }
+        .role-mediator { border-color: var(--mediator-gold); color: var(--mediator-gold); }
+        .role-traitor { border-color: var(--traitor-purple); color: var(--traitor-purple); }
+
+        .quick-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .action-btn { flex: 1; padding: 8px; background: #21262d; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .action-btn:hover { background: #30363d; color: var(--gold); }
+
+        .log-panel { height: 100%; }
+        .log-container { flex-grow: 1; background: #0d1117; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; font-family: monospace; font-size: 12px; overflow-y: auto; line-height: 1.6; }
+        .log-entry { margin-bottom: 6px; color: var(--text-muted); }
+        .log-time { color: #58a6ff; margin-right: 5px; }
+        .log-highlight { color: #daaa3f; }
+        .btn-clear-log { margin-top: 10px; background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); font-size: 12px; padding: 6px; border-radius: 4px; cursor: pointer; }
+        .btn-clear-log:hover { color: var(--text-main); background: #21262d; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="panel sidebar">
+        <div class="logo-area">
+            <h1>🐺 狼人殺</h1>
+            <p>上帝視角控制台</p>
+        </div>
+        
+        <div>
+            <div class="panel-title">遊戲設定</div>
+            <div class="config-item"><span>玩家人數</span><strong>10 人局</strong></div>
+            <div class="config-item"><span>🐺 狼人</span><span>3 🐺</span></div>
+            <div class="config-item"><span>🧑‍🌾 平民</span><span>3 🧑‍🌾</span></div>
+            <div class="config-item"><span>🔮 預言家</span><span>1 🔮</span></div>
+            <div class="config-item"><span>🧪 女巫</span><span>1 🧪</span></div>
+            <div class="config-item"><span>⚖️ 調停者</span><span>1 ⚖️</span></div>
+            <div class="config-item"><span>🃏 叛徒</span><span>1 🃏</span></div>
+        </div>
+
+        <div style="margin-top: auto;">
+            <div class="panel-title">遊戲控制</div>
+            <button class="btn btn-gold" onclick="startGame()">開始遊戲</button>
+            <button class="btn btn-blue" onclick="nextPhase('night')">🌙 進入夜晚</button>
+            <button class="btn btn-brown" onclick="nextPhase('day')">☀️ 進入白天</button>
+            <button class="btn btn-red" onclick="resetGame()">🛑 結束遊戲</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="status-bar">
+            <div class="status-item"><span>遊戲狀態</span><strong id="status-state">等待開始</strong></div>
+            <div class="status-item"><span>當前階段</span><strong id="status-phase">準備階段</strong></div>
+            <div class="status-item"><span>存活玩家</span><strong id="status-alive" style="color:#56d364;">10 / 10</strong></div>
+            <div class="status-item"><span>遊戲日數</span><strong id="status-days" style="color:var(--traitor-purple);">第 1 天</strong></div>
+        </div>
+
+        <div class="panel" style="flex-grow: 1; margin-top: 15px;">
+            <div class="panel-title">玩家身份一覽（上帝視角）</div>
+            <div class="card-grid" id="card-grid"></div>
+
+            <div class="panel-title" style="margin-top: 15px; margin-bottom: 10px; border: none;">快速操作（上帝功能）</div>
+            <div class="quick-actions">
+                <button class="action-btn" onclick="quickKill()">🗡️ 殺人</button>
+                <button class="action-btn" onclick="quickHeal()">❤️ 救活</button>
+                <button class="action-btn" onclick="quickCheck()">👁️ 查驗身份</button>
+                <button class="action-btn" onclick="addCustomLog()">💬 發送訊息</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel log-panel">
+        <div class="panel-title">遊戲記錄</div>
+        <div class="log-container" id="log-container">
+            <div class="log-entry"><span class="log-time">[00:00]</span> 遊戲已創建，等待開始...</div>
+        </div>
+        <button class="btn-clear-log" onclick="clearLog()">清空記錄</button>
+    </div>
+</div>
+
+<script>
+    const roleConfig = [
+        { name: "狼人", icon: "🐺", class: "role-wolf" },
+        { name: "狼人", icon: "🐺", class: "role-wolf" },
+        { name: "狼人", icon: "🐺", class: "role-wolf" },
+        { name: "預言家", icon: "🔮", class: "role-seer" },
+        { name: "女巫", icon: "🧪", class: "role-witch" },
+        { name: "調停者", icon: "⚖", class: "role-mediator" },
+        { name: "叛徒", icon: "🃏", class: "role-traitor" },
+        { name: "平民", icon: "🧑‍🌾", class: "" },
+        { name: "平民", icon: "🧑‍🌾", class: "" },
+        { name: "平民", icon: "🧑‍🌾", class: "" }
+    ];
+
+    let players = [];
+    let dayCount = 1;
+    let currentPhase = "準備階段";
+    let selectedPlayerIdx = null;
+
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function renderCards() {
+        const grid = document.getElementById("card-grid");
+        grid.innerHTML = "";
+        players.forEach((p, idx) => {
+            const card = document.createElement("div");
+            card.className = `card ${p.isAlive ? p.class : ''}`;
+            if(selectedPlayerIdx === idx) card.style.borderColor = 'var(--gold)';
+            
+            card.onclick = () => selectPlayer(idx);
+            card.innerHTML = `
+                <div class="card-num">${p.id}號玩家</div>
+                <div class="card-avatar">${p.isAlive ? p.icon : '💀'}</div>
+                <div class="card-role">${p.name}</div>
+                <div class="card-status ${p.isAlive ? 'status-alive' : 'status-dead'}">
+                    ${p.isAlive ? '● 存活' : '● 死亡'}
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+        const aliveCount = players.filter(p => p.isAlive).length;
+        document.getElementById("status-alive").innerText = `${aliveCount} / 10`;
+    }
+
+    function selectPlayer(idx) {
+        selectedPlayerIdx = idx;
+        renderCards();
+    }
+
+    function logEvent(text, highlight = false) {
+        const container = document.getElementById("log-container");
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+        entry.innerHTML = `<span class="log-time">[${timeStr}]</span> <span class="${highlight ? 'log-highlight' : ''}">${text}</span>`;
+        container.appendChild(entry);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function startGame() {
+        shuffle(roleConfig);
+        players = roleConfig.map((r, i) => ({
+            id: i + 1,
+            name: r.name,
+            icon: r.icon,
+            class: r.class,
+            isAlive: true
+        }));
+        dayCount = 1;
+        currentPhase = "準備階段";
+        document.getElementById("status-state").innerText = "進行中";
+        document.getElementById("status-phase").innerText = "天黑請閉眼";
+        document.getElementById("status-days").innerText = `第 ${dayCount} 天`;
+        renderCards();
+        logEvent("🎲 身份隨機分配完成，遊戲正式開始！", true);
+        logEvent("🌙 第一天黑夜降臨，請所有人閉眼...");
+    }
+
+    function nextPhase(phase) {
+        if(players.length === 0) return alert("請先點擊『開始遊戲』！");
+        if (phase === 'night') {
+            currentPhase = "黑夜階段";
+            document.getElementById("status-phase").innerText = "狼人請睜眼";
+            logEvent(`🌙 進入第 ${dayCount} 天夜晚。狼人開始行動。`);
+        } else {
+            currentPhase = "白天階段";
+            document.getElementById("status-phase").innerText = "全體發言與公投";
+            logEvent(`☀️ 天亮了！進入第 ${dayCount} 天白天，請存活玩家依序發言。`);
+            dayCount++;
+            document.getElementById("status-days").innerText = `第 ${dayCount} 天`;
+        }
+    }
+
+    function quickKill() {
+        if (selectedPlayerIdx === null) return alert("請先在中央點選一位玩家卡牌！");
+        if (!players[selectedPlayerIdx].isAlive) return alert("該玩家已經死亡！");
+        players[selectedPlayerIdx].isAlive = false;
+        logEvent(`🗡️ 上帝使用了神之手：驅逐了 ${selectedPlayerIdx + 1} 號玩家 (${players[selectedPlayerIdx].name})。`);
+        selectedPlayerIdx = null;
+        renderCards();
+        checkGameEnd();
+    }
+
+    function quickHeal() {
+        if (selectedPlayerIdx === null) return alert("請先在中央點選一位玩家卡牌！");
+        if (players[selectedPlayerIdx].isAlive) return alert("該玩家本來就活著！");
+        players[selectedPlayerIdx].isAlive = true;
+        logEvent(`❤️ 上帝神蹟顯現：神聖復活了 ${selectedPlayerIdx + 1} 號玩家 (${players[selectedPlayerIdx].name})。`);
+        selectedPlayerIdx = null;
+        renderCards();
+    }
+
+    function quickCheck() {
+        if (selectedPlayerIdx === null) return alert("請先點選卡牌！");
+        const p = players[selectedPlayerIdx];
+        alert(`🔮 上帝秘密查驗：\n${p.id}號玩家的真實身份是：【${p.name}】`);
+    }
+
+    function addCustomLog() {
+        const msg = prompt("請輸入要廣播給全場的上帝訊息：");
+        if(msg) logEvent(`📢 上帝廣播：${msg}`, true);
+    }
+
+    function checkGameEnd() {
+        const wolves = players.filter(p => p.isAlive && p.name === "狼人").length;
+        const goods = players.filter(p => p.isAlive && p.name !== "狼人").length;
+        if (wolves === 0) {
+            logEvent("🎉 【遊戲結束】所有狼人已出局，好人陣營獲得勝利！", true);
+            alert("🎉 好人勝利！");
+        } else if (wolves >= goods) {
+            logEvent("🐺 【遊戲結束】狼人屠殺殆盡，狼人陣營獲得勝利！", true);
+            alert("🐺 狼人勝利！");
+        }
+    }
+
+    function clearLog() { document.getElementById("log-container").innerHTML = ""; }
+    function resetGame() { location.reload(); }
+
+    for(let i=1; i<=10; i++) {
+        const grid = document.getElementById("card-grid");
+        grid.innerHTML += `<div class="card"><div class="card-num">${i}號玩家</div><div class="card-avatar">❓</div><div class="card-role">未知身份</div></div>`;
+    }
+</script>
+</body>
+</html>
