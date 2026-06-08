@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>狼人殺 Online - 10人線上對戰版</title>
+    <style>
+        :root {
+            --bg-dark: #0d1117; --panel-bg: #161b22; --border-color: #30363d;
+            --text-main: #c9d1d9; --text-muted: #8b949e; --gold: #d4af37;
+            --wolf-red: #ff4d4d; --seer-blue: #4da6ff; --witch-green: #4dff4d;
+            --mediator-gold: #ffcc00; --traitor-purple: #b366ff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); padding: 20px; display: flex; justify-content: center; }
+        .container { display: grid; grid-template-columns: 240px 1fr 300px; gap: 20px; width: 100%; max-width: 1400px; height: 90vh; }
+        .panel { background-color: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; }
+        .panel-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); color: var(--gold); }
+        .btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
+        .btn-gold { background: linear-gradient(135deg, #b8860b, #e6b800); color: #000; }
+        .btn-blue { background: #1f6feb; }
+        .btn:disabled, .action-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        .status-bar { display: flex; justify-content: space-around; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 15px; }
+        .status-item { text-align: center; }
+        .status-item span { display: block; font-size: 12px; color: var(--text-muted); }
+        .card-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+        .card { background: #1c2128; border: 2px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; align-items: center; text-align: center; height: 190px; cursor: pointer; transition: 0.3s; }
+        .card:hover { border-color: var(--gold); }
+        .card-avatar { width: 65px; height: 65px; border-radius: 50%; background: #2d333b; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 10px 0; border: 1px solid var(--border-color); }
+        .card-dead { filter: grayscale(100%); opacity: 0.4; border-color: var(--border-color) !important; }
+        .role-wolf { border-color: var(--wolf-red); color: var(--wolf-red); }
+        .role-seer { border-color: var(--seer-blue); color: var(--seer-blue); }
+        .role-witch { border-color: var(--witch-green); color: var(--witch-green); }
+        .role-mediator { border-color: var(--mediator-gold); color: var(--mediator-gold); }
+        .role-traitor { border-color: var(--traitor-purple); color: var(--traitor-purple); }
+        .quick-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .action-btn { flex: 1; padding: 10px; background: #21262d; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; cursor: pointer; }
+        .log-container { flex-grow: 1; background: #0d1117; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; font-family: monospace; font-size: 12px; overflow-y: auto; line-height: 1.6; }
+        .log-highlight { color: #daaa3f; }
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(13,17,23,0.95); display:flex; justify-content:center; align-items:center; z-index:100; }
+        .login-box { background: var(--panel-bg); padding: 40px; border-radius: 8px; border: 1px solid var(--border-color); text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        .login-box input { padding: 12px; width: 240px; margin-bottom: 20px; background: #0d1117; color: white; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div id="login-overlay">
+    <div class="login-box">
+        <h2 style="color:var(--gold); margin-bottom: 10px;">🐺 狼人殺 Online</h2>
+        <p style="color:var(--text-muted); margin-bottom: 20px; font-size:14px;">請輸入你的暱稱加入對戰房間</p>
+        <input type="text" id="username-input" placeholder="例如：帥氣預言家" autofocus /><br/>
+        <button class="btn btn-gold" onclick="joinRoom()">加入遊戲房間</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="panel">
+        <div class="panel-title">我的狀態卡</div>
+        <div style="margin-bottom: 20px; font-size: 14px; line-height: 2;">
+            <p>玩家暱稱: <strong id="my-name-display" style="color:#fff;">-</strong></p>
+            <p>目前座位: <strong id="my-id-display">-</strong></p>
+            <p>秘密身分: <strong id="my-role-display" style="color:var(--gold)">未分配</strong></p>
+        </div>
+        
+        <div style="margin-top: auto;">
+            <div class="panel-title">主辦人控制 (1號位限定)</div>
+            <button class="btn btn-gold" id="start-btn" onclick="sendStartGame()">🎲 開始發牌</button>
+            <button class="btn btn-blue" id="phase-night-btn" onclick="sendPhase('night')" disabled>🌙 進入夜晚</button>
+            <button class="btn btn-blue" id="phase-day-btn" onclick="sendPhase('day')" disabled>☀️ 進入白天</button>
+        </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column;">
+        <div class="status-bar">
+            <div class="status-item"><span>房間狀態</span><strong id="status-state">等待玩家中</strong></div>
+            <div class="status-item"><span>當前階段</span><strong id="status-phase">準備階段</strong></div>
+            <div class="status-item"><span>遊戲天數</span><strong id="status-days">第 1 天</strong></div>
+        </div>
+
+        <div class="panel" style="flex-grow: 1;">
+            <div class="panel-title">戰場在線玩家（點擊卡片選擇目標）</div>
+            <div class="card-grid" id="card-grid"></div>
+
+            <div class="panel-title" style="margin-top: 25px; border:none; margin-bottom: 5px;">角色行動技能</div>
+            <div class="quick-actions">
+                <button class="action-btn" id="act-kill" onclick="emitAction('actionKill')" disabled>🗡️ 投票/擊殺</button>
+                <button class="action-btn" id="act-heal" onclick="emitAction('actionHeal')" disabled>❤️ 解藥/救活</button>
+                <button class="action-btn" id="act-check" onclick="emitAction('actionCheck')" disabled>🔮 查驗身分</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">上帝廣播與動態記錄</div>
+        <div class="log-container" id="log-container"></div>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    let currentPlayers = [];
+    let selectedPlayerId = null;
+
+    function joinRoom() {
+        const name = document.getElementById("username-input").value.trim();
+        if(!name) return alert("請輸入暱稱！");
+        socket.emit('joinGame', name);
+        document.getElementById("my-name-display").innerText = name;
+        document.getElementById("login-overlay").style.display = "none";
+    }
+
+    function sendStartGame() { socket.emit('startGame'); }
+    function sendPhase(phase) { socket.emit('nextPhase', phase); }
+
+    socket.on('alert', msg => alert(msg));
+
+    socket.on('updateGame', (data) => {
+        currentPlayers = data.players;
+        
+        document.getElementById("my-id-display").innerText = data.myId + " 號座位";
+        document.getElementById("my-role-display").innerText = data.myRole;
+        document.getElementById("status-state").innerText = data.status;
+        document.getElementById("status-phase").innerText = data.phase;
+        document.getElementById("status-days").innerText = `第 ${data.dayCount} 天`;
+
+        const isHost = (data.myId === 1);
+        document.getElementById("start-btn").disabled = (data.status !== "等待開始" || !isHost);
+        document.getElementById("phase-night-btn").disabled = (data.status !== "進行中" || !isHost || data.phase === "黑夜階段");
+        document.getElementById("phase-day-btn").disabled = (data.status !== "進行中" || !isHost || data.phase === "白天階段");
+
+        document.getElementById("act-kill").disabled = (data.status !== "進行中");
+        document.getElementById("act-heal").disabled = (data.status !== "進行中");
+        document.getElementById("act-check").disabled = (data.status !== "進行中" || data.myRole !== "預言家");
+
+        renderCards();
+    });
+
+    function renderCards() {
+        const grid = document.getElementById("card-grid");
+        grid.innerHTML = "";
+
+        currentPlayers.forEach(p => {
+            const card = document.createElement("div");
+            card.className = `card ${p.isAlive ? p.class : 'card-dead'}`;
+            if(selectedPlayerId === p.id && p.isAlive) card.style.borderColor = 'var(--gold)';
+            
+            card.onclick = () => { if(p.isAlive) { selectedPlayerId = p.id; renderCards(); } };
+            card.innerHTML = `
+                <div style="font-size:12px; color:var(--text-muted);">${p.id}號位 [${p.name}]</div>
+                <div class="card-avatar">${p.isAlive ? p.icon : '💀'}</div>
+                <div style="font-weight:bold; font-size:15px;">${p.isAlive ? p.role : '已出局'}</div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function emitAction(actionType) {
+        if(!selectedPlayerId) return alert("請先在中央點選一位玩家卡牌！");
+        socket.emit(actionType, selectedPlayerId);
+        selectedPlayerId = null;
+    }
+
+    socket.on('log', (msg, isHighlight) => {
+        const container = document.getElementById("log-container");
+        const entry = document.createElement("div");
+        entry.style.paddingBottom = "6px";
+        if(isHighlight) entry.className = "log-highlight";
+        entry.innerText = `> ${msg}`;
+        container.appendChild(entry);
+        container.scrollTop = container.scrollHeight;
+    });
+
+    socket.on('checkResult', msg => alert(msg));
+</script>
+</body>
+</html>
